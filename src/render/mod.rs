@@ -9,7 +9,7 @@ trait UiExtended {
     fn selected_file<L: AsRef<str>, F: Fn()>(&self, title: L, label: L, buf: &mut String, func: F);
 }
 
-impl<'ui> UiExtended for Ui<'ui> {
+impl UiExtended for Ui<'_> {
     fn section<T: AsRef<str>>(&self, header: T) {
         self.spacing();
         self.separator();
