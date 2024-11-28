@@ -1,0 +1,22 @@
+name: Build
+
+on:
+  - workflow_dispatch
+  - workflow_call
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reshade_preset_switcher
+          path: |
+            target/release/reshade_preset_switcher.dll
+            target/release/reshade_preset_switcher.pdb

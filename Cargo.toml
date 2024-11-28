@@ -1,0 +1,41 @@
+[package]
+name = "reshade_preset_switcher"
+version = "0.9.0"
+authors = ["lorkanoo"]
+edition = "2021"
+description = "Reshade preset switcher"
+repository = "https://github.com/lorkanoo/reshade_preset_switcher"
+rust-version = "1.76.0"
+
+[dependencies]
+log = { version = "0.4.22", features = ["release_max_level_info", "max_level_debug"]}
+reqwest = { version = "0.12.8", features = ["blocking", "rustls-tls", "json"] }
+serde = { version = "1.0.163", features = ["derive"] }
+serde_json = "1.0.132"
+windows = { version = "0.58.0", features = [
+    "Win32_Media",
+] }
+regex = "1.11.1"
+function_name = "0.3.0"
+nexus = { git = "https://github.com/zerthox/nexus-rs", features = ["log", "mumble_json"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+select = "0.6.0"
+open = "5.3.1"
+semver = "1.0.23"
+rdev = "0.5.3"
+rfd = "0.15.1"
+
+[build-dependencies]
+winresource = "0.1.17"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.winresource]
+ProductName = "reshade_preset_switcher"
+OriginalFilename = "reshade_preset_switcher.dll"
+
+[profile.release]
+lto = "thin"
+debug = "limited"
+split-debuginfo = "packed"
