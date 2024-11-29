@@ -4,6 +4,8 @@ pub mod reshade_config;
 
 use crate::addon::{Addon, VERSION};
 use crate::config::notifications::Notifications;
+use crate::config::preset_rule::rule_condition::rule_data::ConditionData;
+use crate::config::preset_rule::rule_condition::RuleCondition;
 use crate::config::preset_rule::PresetRule;
 pub use crate::config::reshade_config::ReshadeConfig;
 use log::info;
@@ -84,6 +86,14 @@ fn default_version() -> String {
 }
 
 pub fn migrate_configs(addon: &mut MutexGuard<Addon>) {
+    if version_older_than(addon.config.version.as_str(), "0.9.1") {
+        for rule in &mut addon.config.preset_rules {
+            let condition =
+                RuleCondition::new(ConditionData::Maps(rule.maps.clone()), Default::default());
+            rule.conditions.push(condition);
+            rule.maps = Vec::new();
+        }
+    }
     addon.config.version = VERSION.to_string();
 }
 

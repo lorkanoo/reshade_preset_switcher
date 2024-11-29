@@ -58,11 +58,6 @@ impl Addon {
             }
         }
 
-        // Addon::lock().config.preset_rules.push(PresetRule {
-        //     maps: vec![50],
-        //     preset_name: "Lions Arch".to_string(),
-        // });
-
         migrate_configs(&mut Addon::lock());
         init_context(&mut Addon::lock());
         fetch_map_names_thread();

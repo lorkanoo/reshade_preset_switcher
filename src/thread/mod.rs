@@ -1,8 +1,12 @@
 use crate::addon::Addon;
 use crate::config::game_dir;
-use crate::config::preset_rule::{PresetRule, RuleProcessingResult, RuleProcessingSuccess};
+use crate::config::preset_rule::rule_condition::rule_data::ConditionData;
+use crate::config::preset_rule::rule_condition::ConjunctionType;
+use crate::config::preset_rule::{PresetRule, RuleProcessingResult};
 use crate::context::reshade_context::key_combination::KeyCombination;
 use crate::context::reshade_context::ReshadeContext;
+use crate::context::{current_time_period, Context, CurrentTimePeriod, TimePeriodType};
+use chrono::{DateTime, Local, Timelike};
 use function_name::named;
 use log::{debug, error, info, warn};
 use rdev::{simulate, EventType, Key};
@@ -28,12 +32,13 @@ pub fn background_thread() {
                 info!("Reshade context not valid, skipping background processing");
             } else {
                 load_reshade_presets();
-                if Addon::lock().context.map_changed(&mut new_map_id) {
-                    on_map_change(new_map_id);
+                if Addon::lock().context.map_changed(&mut new_map_id)
+                    || Addon::lock().context.time_period_changed(&mut new_map_id)
+                {
+                    process_preset_rules(new_map_id);
                 }
             }
         }
-
         thread::sleep(Duration::from_millis(1000));
     }));
 }
@@ -113,75 +118,105 @@ fn true_if_1() -> fn(&String) -> bool {
     |value| value == "1"
 }
 
-fn on_map_change(new_map_id: u32) {
+fn process_preset_rules(new_map_id: u32) {
     let addon = Addon::lock();
-    let mut preset_activated: bool = false;
-    for preset_rule in addon.config.preset_rules.iter() {
+    let mut rule_index_to_activate = None;
+    for (rule_index, preset_rule) in addon.config.preset_rules.iter().enumerate() {
         debug!("processing rule {:?}", preset_rule);
-        let result = process_rule(
-            preset_rule,
-            &addon.context.reshade,
-            &new_map_id,
-            &addon.context.reshade.presets,
-        );
+        let result = evaluate_rule(preset_rule, &addon.context, &new_map_id);
         debug!("rule {:?} processed with result {:?}", preset_rule, result);
-        if let Ok(success) = result.processing_result {
-            if matches!(success, RuleProcessingSuccess::PresetActivated) {
-                info!("preset activated");
-                preset_activated = true;
+        if let Ok(should_activate) = result.activate_rule {
+            if should_activate {
+                rule_index_to_activate = Some(rule_index);
                 break;
             }
         }
     }
-    if !preset_activated {
-        let default_preset_rule = addon.config.preset_rules.last();
-        if let Some(default_preset_rule) = default_preset_rule {
-            info!("Activating default preset");
-            let (current_preset_index, default_preset_index) = get_preset_indexes(
-                default_preset_rule,
-                &addon.context.reshade,
-                &addon.context.reshade.presets,
-            );
-            switch_to_preset(
-                &current_preset_index,
-                &default_preset_index,
-                &addon.context.reshade,
-            );
-        }
+    let rule_to_activate;
+    if let Some(rule_index) = rule_index_to_activate {
+        rule_to_activate = addon
+            .config
+            .preset_rules
+            .get(rule_index_to_activate.unwrap());
+    } else {
+        rule_to_activate = addon.config.preset_rules.last();
+    }
+    if let Some(rule) = rule_to_activate {
+        info!("Activating default preset");
+        let (current_preset_index, default_preset_index) =
+            get_preset_indexes(rule, &addon.context.reshade);
+        let reshade_context = &addon.context.reshade.clone();
+        //drop addon to unlock threads
+        drop(addon);
+        switch_to_preset(
+            &current_preset_index,
+            &default_preset_index,
+            reshade_context,
+        );
     }
 }
 
-pub fn process_rule(
+pub fn evaluate_rule(
     preset_rule: &PresetRule,
-    reshade_context: &ReshadeContext,
+    context: &Context,
     current_map_id: &u32,
-    reshade_presets: &[PathBuf],
 ) -> RuleProcessingResult {
     let validation_result = preset_rule.validate();
     if validation_result.is_ok() {
-        if preset_rule.maps.contains(current_map_id) {
-            if reshade_context.active_preset_path == preset_rule.preset_path {
-                return RuleProcessingResult {
-                    validation_result,
-                    processing_result: Ok(RuleProcessingSuccess::PresetActivated),
-                };
-            }
-            let (current_preset_index, new_preset_index) =
-                get_preset_indexes(preset_rule, reshade_context, reshade_presets);
-            switch_to_preset(&current_preset_index, &new_preset_index, reshade_context);
-            return RuleProcessingResult {
-                validation_result,
-                processing_result: Ok(RuleProcessingSuccess::PresetActivated),
+        let mut rule_fulfilled = false;
+        let rule_condition_iter = &mut preset_rule.conditions.iter().peekable();
+        while let Some(rule_condition) = rule_condition_iter.next() {
+            let condition_fulfilled = match &rule_condition.data {
+                ConditionData::Maps(maps) => maps.contains(current_map_id),
+                ConditionData::Time(time_periods) => {
+                    debug!("Current time period: {:?}", context.current_time_period);
+                    debug!("Rule time periods: {:?}", time_periods);
+                    match context.current_time_period {
+                        CurrentTimePeriod::Day => time_periods.day,
+                        CurrentTimePeriod::Dusk => time_periods.dusk,
+                        CurrentTimePeriod::Night => time_periods.night,
+                        CurrentTimePeriod::Dawn => time_periods.dawn,
+                    }
+                }
             };
+
+            match rule_condition_iter.peek() {
+                None => {
+                    rule_fulfilled = condition_fulfilled;
+                    break;
+                }
+                Some(next) => match next.conjunction_type {
+                    ConjunctionType::Or => {
+                        if condition_fulfilled {
+                            rule_fulfilled = true;
+                            break;
+                        }
+                    }
+                    ConjunctionType::And => {
+                        if !condition_fulfilled {
+                            rule_fulfilled = false;
+                            break;
+                        }
+                    }
+                },
+            }
         }
-        RuleProcessingResult {
-            validation_result,
-            processing_result: Ok(RuleProcessingSuccess::PresetNotActivated),
+
+        if rule_fulfilled {
+            RuleProcessingResult {
+                validation_result,
+                activate_rule: Ok(true),
+            }
+        } else {
+            RuleProcessingResult {
+                validation_result,
+                activate_rule: Ok(false),
+            }
         }
     } else {
         RuleProcessingResult {
             validation_result,
-            processing_result: Err(()),
+            activate_rule: Err(()),
         }
     }
 }
@@ -189,11 +224,11 @@ pub fn process_rule(
 fn get_preset_indexes(
     preset_rule: &PresetRule,
     reshade_context: &ReshadeContext,
-    loaded_presets: &[PathBuf],
 ) -> (Option<usize>, Option<usize>) {
     let mut current_preset_index = None;
     let mut new_preset_index = None;
-    for (index, preset) in loaded_presets.iter().enumerate() {
+    for (index, preset) in reshade_context.presets.iter().enumerate() {
+        debug!("{}, {:?}", index, preset);
         if *preset == reshade_context.active_preset_path {
             current_preset_index = Some(index);
         }
@@ -206,7 +241,7 @@ fn get_preset_indexes(
 
 fn send(event_type: &EventType) {
     match simulate(event_type) {
-        Ok(()) => info!("Sent"),
+        Ok(()) => debug!("Keypress sent"),
         Err(_) => {
             error!("Could not send {:?}", event_type);
         }
@@ -232,7 +267,6 @@ fn switch_to_preset(
     }
     let mut current_preset = current_preset_index.unwrap();
     let new_preset = new_preset_index.unwrap();
-
     while current_preset != new_preset {
         if current_preset < new_preset {
             trigger_key_combination(
@@ -276,6 +310,8 @@ fn trigger_key_combination(key_combination: &KeyCombination) {
     for key in &keys {
         send(&EventType::KeyRelease(*key));
     }
+
+    thread::sleep(Duration::from_millis(20));
 }
 
 pub fn load_reshade_presets() {
