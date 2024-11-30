@@ -12,8 +12,9 @@ pub struct RuleCondition {
     pub conjunction_type: ConjunctionType,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum ConjunctionType {
+    #[default]
     Or,
     And,
 }
@@ -28,12 +29,6 @@ impl Switch<ConjunctionType> for ConjunctionType {
             ConjunctionType::Or => ConjunctionType::And,
             ConjunctionType::And => ConjunctionType::Or,
         };
-    }
-}
-
-impl Default for ConjunctionType {
-    fn default() -> Self {
-        ConjunctionType::Or
     }
 }
 

@@ -13,10 +13,10 @@ use std::collections::HashMap;
 impl Addon {
     pub fn render_rule_edit(&mut self, rule_index: usize, ui: &Ui) {
         self.render_button_ribbon(rule_index, ui);
-        let mut rule = self.config.preset_rules.get_mut(rule_index).unwrap();
+        let rule = self.config.preset_rules.get_mut(rule_index).unwrap();
         ui.input_text("Rule name", &mut rule.rule_name).build();
         Self::render_activation_conditions(&mut self.context, rule, ui);
-        Self::render_preset_picker(&self.context.reshade, &mut rule, ui);
+        Self::render_preset_picker(&self.context.reshade, rule, ui);
         Self::render_additional_info(&self.context.mumble, ui);
         ui.spacing();
     }
@@ -109,13 +109,11 @@ impl Addon {
             }
             ui.same_line();
         }
-        if !has_time_condition {
-            if ui.button("Time") {
-                rule.conditions.push(RuleCondition::new(
-                    ConditionData::Time(TimePeriods::default()),
-                    ConjunctionType::And,
-                ));
-            }
+        if !has_time_condition && ui.button("Time") {
+            rule.conditions.push(RuleCondition::new(
+                ConditionData::Time(TimePeriods::default()),
+                ConjunctionType::And,
+            ));
         }
     }
 

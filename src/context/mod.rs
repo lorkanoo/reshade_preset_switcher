@@ -4,8 +4,9 @@ pub mod ui;
 use crate::addon::Addon;
 use crate::context::reshade_context::ReshadeContext;
 use crate::context::ui::UiContext;
-use chrono::{DateTime, Duration, Local, Timelike, Utc};
-use log::{debug, info};
+use chrono::{DateTime, Duration, Timelike, Utc};
+use function_name::named;
+use log::info;
 use nexus::data_link::get_mumble_link;
 use nexus::data_link::mumble::MumblePtr;
 use std::sync::MutexGuard;
@@ -47,6 +48,7 @@ impl Default for Context {
     }
 }
 impl Context {
+    #[named]
     pub fn map_changed(&mut self, new_map_id: &mut u32) -> bool {
         if let Some(m) = self.mumble {
             let current_map = m.read_map_id();
@@ -55,14 +57,15 @@ impl Context {
             *new_map_id = current_map;
 
             if result {
-                info!("Map changed to {}", new_map_id);
-                if canthan_maps().contains(&new_map_id) {
+                info!("[{}] Map changed to {}", function_name!(), new_map_id);
+                if canthan_maps().contains(new_map_id) {
                     self.current_time_period = current_time_period(TimePeriodType::Canthan);
                 } else {
                     self.current_time_period = current_time_period(TimePeriodType::Tyrian);
                 }
                 info!(
-                    "Current time period updated on map change: {:?}",
+                    "[{}] Current time period updated on map change: {:?}",
+                    function_name!(),
                     self.current_time_period
                 );
             }
@@ -71,15 +74,20 @@ impl Context {
         false
     }
 
+    #[named]
     pub fn time_period_changed(&mut self, current_map_id: &mut u32) -> bool {
         let mut time_period_type = TimePeriodType::Tyrian;
-        if canthan_maps().contains(&current_map_id) {
+        if canthan_maps().contains(current_map_id) {
             time_period_type = TimePeriodType::Canthan;
         }
         let new_period = current_time_period(time_period_type);
         if new_period != self.current_time_period {
             self.current_time_period = new_period;
-            info!("Time period changed to {:?}", self.current_time_period);
+            info!(
+                "[{}] Time period changed to {:?}",
+                function_name!(),
+                self.current_time_period
+            );
             return true;
         }
         false

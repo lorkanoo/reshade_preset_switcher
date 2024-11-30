@@ -8,6 +8,7 @@ use crate::config::preset_rule::rule_condition::rule_data::ConditionData;
 use crate::config::preset_rule::rule_condition::RuleCondition;
 use crate::config::preset_rule::PresetRule;
 pub use crate::config::reshade_config::ReshadeConfig;
+use function_name::named;
 use log::info;
 use nexus::paths::{get_addon_dir, get_game_dir};
 use semver::Version;
@@ -39,6 +40,7 @@ impl Default for Config {
 }
 
 impl Config {
+    #[named]
     pub fn try_load() -> Option<Self> {
         let path = Self::file();
         let file = File::open(&path)
@@ -48,17 +50,26 @@ impl Config {
         let config = serde_json::from_reader(reader)
             .inspect_err(|err| log::warn!("Failed to parse config: {err}"))
             .ok()?;
-        info!("Loaded config from \"{}\"", path.display());
+        info!(
+            "[{}] Loaded config from \"{}\"",
+            function_name!(),
+            path.display()
+        );
         Some(config)
     }
 
+    #[named]
     pub fn save(&self) {
         let path = Self::file();
         match File::create(&path) {
             Ok(file) => {
                 let writer = BufWriter::new(file);
                 serde_json::to_writer_pretty(writer, &self).expect("failed to serialize config");
-                info!("Saved config to \"{}\"", path.display())
+                info!(
+                    "[{}] Saved config to \"{}\"",
+                    function_name!(),
+                    path.display()
+                )
             }
             Err(err) => log::error!("Failed to save config: {err}"),
         }
