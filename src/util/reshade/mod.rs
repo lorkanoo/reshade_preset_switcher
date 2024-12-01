@@ -9,7 +9,6 @@ use std::fs;
 use std::path::PathBuf;
 
 pub fn load_reshade_context(reshade_ini_path: &PathBuf) {
-    info!("Loading reshade context from {:?}", reshade_ini_path);
     if let Ok(content) = fs::read_to_string(reshade_ini_path) {
         load_active_preset_path(&content);
         load_preset_shortcut_paths(&content);
