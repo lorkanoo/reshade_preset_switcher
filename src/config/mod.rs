@@ -1,11 +1,7 @@
-mod notifications;
 pub mod preset_rule;
 pub mod reshade_config;
 
 use crate::addon::{Addon, VERSION};
-use crate::config::notifications::Notifications;
-use crate::config::preset_rule::rule_condition::rule_data::ConditionData;
-use crate::config::preset_rule::rule_condition::RuleCondition;
 use crate::config::preset_rule::PresetRule;
 pub use crate::config::reshade_config::ReshadeConfig;
 use function_name::named;
@@ -22,8 +18,6 @@ use std::sync::MutexGuard;
 pub struct Config {
     #[serde(default = "default_version")]
     pub version: String,
-    #[serde(default = "Notifications::default")]
-    pub notifications: Notifications,
     pub preset_rules: Vec<PresetRule>,
     pub reshade: ReshadeConfig,
 }
@@ -32,7 +26,6 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             version: VERSION.to_string(),
-            notifications: Notifications::default(),
             preset_rules: Vec::new(),
             reshade: ReshadeConfig::default(),
         }
@@ -97,18 +90,14 @@ fn default_version() -> String {
 }
 
 pub fn migrate_configs(addon: &mut MutexGuard<Addon>) {
-    if version_older_than(addon.config.version.as_str(), "0.9.1") {
-        for rule in &mut addon.config.preset_rules {
-            let condition =
-                RuleCondition::new(ConditionData::Maps(rule.maps.clone()), Default::default());
-            rule.conditions.push(condition);
-            rule.maps = Vec::new();
-        }
-    }
     addon.config.version = VERSION.to_string();
 }
 
 #[allow(dead_code)]
 fn version_older_than(older: &str, than: &str) -> bool {
     Version::parse(older).unwrap() < Version::parse(than).unwrap()
+}
+
+pub trait SwitchValue<T> {
+    fn switch(&mut self);
 }

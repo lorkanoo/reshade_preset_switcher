@@ -4,6 +4,7 @@ pub mod config;
 pub mod context;
 mod render;
 mod thread;
+pub mod util;
 
 use crate::addon::Addon;
 use nexus::{AddonFlags, UpdateProvider};

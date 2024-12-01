@@ -1,7 +1,10 @@
 use crate::addon::Addon;
-use crate::config::preset_rule::rule_condition::rule_data::{ConditionData, TimePeriods};
-use crate::config::preset_rule::rule_condition::{ConjunctionType, RuleCondition, Switch};
+use crate::config::preset_rule::rule_condition::condition_data::time_periods::TimePeriods;
+use crate::config::preset_rule::rule_condition::condition_data::ConditionData;
+use crate::config::preset_rule::rule_condition::conjunction_type::ConjunctionType;
+use crate::config::preset_rule::rule_condition::RuleCondition;
 use crate::config::preset_rule::PresetRule;
+use crate::config::SwitchValue;
 use crate::context::reshade_context::ReshadeContext;
 use crate::context::Context;
 use crate::render::options::ERROR_COLOR;
@@ -47,7 +50,12 @@ impl Addon {
         if !rule.preset_path.exists() {
             ui.text_colored(ERROR_COLOR, "Invalid preset selected");
         }
-        for chunk in reshade_context.presets.chunks(4) {
+        ui.text_disabled(
+            "For preset to be visible, make sure it has a key assigned in ReShade settings.\n\
+            1. Right-click a preset name in the preset list and choose a key.\n\
+            2. Switch to different preset in ReShade manually to save the changes.",
+        );
+        for chunk in reshade_context.preset_shortcut_paths.chunks(4) {
             for preset_path in chunk {
                 if rule.preset_path == *preset_path {
                     continue;
@@ -96,6 +104,15 @@ impl Addon {
             rule.conditions.remove(index);
         }
         ui.spacing();
+        Self::render_condition_creator(rule, ui, has_map_condition, has_time_condition);
+    }
+
+    fn render_condition_creator(
+        rule: &mut PresetRule,
+        ui: &Ui,
+        has_map_condition: bool,
+        has_time_condition: bool,
+    ) {
         if !(has_map_condition && has_time_condition) {
             ui.separator_disabled();
             ui.header("Add new condition:");

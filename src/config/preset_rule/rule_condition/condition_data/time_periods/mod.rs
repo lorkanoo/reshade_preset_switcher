@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ConditionData {
-    Maps(Vec<u32>),
-    Time(TimePeriods),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimePeriods {
     pub day: bool,
     pub dusk: bool,

@@ -1,11 +1,11 @@
+mod configuration;
 mod rule_edit;
 
 use crate::addon::Addon;
 use crate::config::preset_rule::{PresetRule, RuleValidationError};
 use crate::context::ui::UiContext;
 use crate::render::options::{ERROR_COLOR, SUCCESS_COLOR};
-use crate::render::{shorten_path, UiExtended};
-use crate::thread::select_reshade_ini_file_thread;
+use crate::render::UiExtended;
 use nexus::imgui::{Direction, Ui};
 use std::path::PathBuf;
 
@@ -52,6 +52,14 @@ impl Addon {
                     if let Err(RuleValidationError::NoPresetSelected) = rule.validate() {
                         ui.text_colored(ERROR_COLOR, "[invalid preset]");
                         ui.same_line();
+                    } else if !self
+                        .context
+                        .reshade
+                        .preset_shortcut_paths
+                        .contains(&rule.preset_path)
+                    {
+                        ui.text_colored(ERROR_COLOR, "[keybind missing]");
+                        ui.same_line();
                     }
                     Self::render_active_label(
                         &self.context.reshade.active_preset_path,
@@ -71,18 +79,13 @@ impl Addon {
                         ui,
                     );
                 }
-                self.post_render_rules_actions(
-                    &mut move_down_index,
-                    &mut move_up_index,
-                    &mut delete_index,
-                );
+                self.post_render_rules_actions(move_down_index, move_up_index, delete_index);
             }
         }
         if ui.button("New rule") {
             self.config.preset_rules.insert(0, PresetRule::default());
             self.context.ui.rule_under_edit_index = Some(0);
         }
-        ui.same_line();
     }
 
     fn render_rule_button_ribbon(
@@ -138,50 +141,18 @@ impl Addon {
 
     fn post_render_rules_actions(
         &mut self,
-        move_down_index: &mut Option<usize>,
-        move_up_index: &mut Option<usize>,
-        delete_index: &mut Option<usize>,
+        move_down_index: Option<usize>,
+        move_up_index: Option<usize>,
+        delete_index: Option<usize>,
     ) {
         if let Some(rule_index) = move_down_index {
-            self.config.preset_rules.swap(*rule_index, *rule_index + 1);
+            self.config.preset_rules.swap(rule_index, rule_index + 1);
         }
         if let Some(rule_index) = move_up_index {
-            self.config.preset_rules.swap(*rule_index, *rule_index - 1);
+            self.config.preset_rules.swap(rule_index, rule_index - 1);
         }
         if let Some(rule_index) = delete_index {
-            self.config.preset_rules.remove(*rule_index);
+            self.config.preset_rules.remove(rule_index);
         }
-    }
-
-    fn render_configuration(&mut self, ui: &Ui) {
-        ui.section("Configuration");
-        let path_str = self.config.reshade.ini_path.display().to_string();
-
-        let mut path = "Select ReShade.ini".to_string();
-        if !path_str.is_empty() {
-            path = shorten_path(path_str);
-            if self
-                .context
-                .reshade
-                .previous_preset_key_combination
-                .is_none()
-            {
-                ui.text_colored(
-                    ERROR_COLOR,
-                    "Configure missing keybind in reshade: Settings -> Previous preset key",
-                )
-            }
-            if self.context.reshade.next_preset_key_combination.is_none() {
-                ui.text_colored(
-                    ERROR_COLOR,
-                    "Configure missing keybind in reshade: Settings -> Next preset key",
-                )
-            }
-        }
-
-        ui.selected_file("ReShade.ini location", "##reshade_ini", &mut path, || {
-            select_reshade_ini_file_thread()
-        });
-        ui.spacing();
     }
 }

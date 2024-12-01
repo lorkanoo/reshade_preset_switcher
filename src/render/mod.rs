@@ -1,7 +1,6 @@
 use nexus::imgui::Ui;
 
 pub mod options;
-mod quick_access;
 
 trait UiExtended {
     fn section<T: AsRef<str>>(&self, header: T);

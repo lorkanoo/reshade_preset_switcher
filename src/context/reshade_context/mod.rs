@@ -6,15 +6,13 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ReshadeContext {
-    pub presets_path: PathBuf,
+    pub preset_shortcut_paths: Vec<PathBuf>,
     pub active_preset_path: PathBuf,
-    pub previous_preset_key_combination: Option<KeyCombination>,
-    pub next_preset_key_combination: Option<KeyCombination>,
-    pub presets: Vec<PathBuf>,
+    pub preset_shortcut_keys: Vec<KeyCombination>,
 }
 
 impl ReshadeContext {
     pub fn valid(&self) -> bool {
-        self.next_preset_key_combination.is_some() && self.previous_preset_key_combination.is_some()
+        !self.preset_shortcut_keys.is_empty()
     }
 }

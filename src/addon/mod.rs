@@ -5,7 +5,6 @@ use crate::thread::background_thread;
 use function_name::named;
 use log::info;
 use nexus::gui::{register_render, RenderType};
-use nexus::quick_access::add_quick_access_context_menu;
 use std::fs;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::thread::JoinHandle;
@@ -59,7 +58,8 @@ impl Addon {
         }
 
         migrate_configs(&mut Addon::lock());
-        init_context(&mut Addon::lock());
+        init_context();
+
         fetch_map_names_thread();
         background_thread();
 
@@ -69,12 +69,6 @@ impl Addon {
         )
         .revert_on_unload();
 
-        add_quick_access_context_menu(
-            "reshade_preset_switcher",
-            None::<&str>,
-            nexus::gui::render!(|ui| Addon::lock().render_quick_access(ui)),
-        )
-        .revert_on_unload();
         info!("[{}] reshade_preset_switcher loaded", function_name!());
     }
     #[named]
@@ -83,6 +77,20 @@ impl Addon {
             "[{}] Unloading reshade_preset_switcher v{VERSION}",
             function_name!()
         );
+        Self::unload_threads();
+        Self::save_config();
+        info!("[{}] reshade_preset_switcher unloaded", function_name!());
+    }
+
+    #[named]
+    fn save_config() {
+        let addon = &mut Self::lock();
+        info!("[{}] Saving configuration..", function_name!());
+        addon.config.save();
+    }
+
+    #[named]
+    fn unload_threads() {
         Self::lock().context.run_background_thread = false;
         let mut threads = Self::threads();
         while let Some(thread) = threads.pop() {
@@ -92,9 +100,5 @@ impl Addon {
                 Err(_) => log::error!("[{}] Thread unloaded with error", function_name!()),
             }
         }
-        let addon = &mut Self::lock();
-        info!("[{}] Saving configuration..", function_name!());
-        addon.config.save();
-        info!("[{}] reshade_preset_switcher unloaded", function_name!());
     }
 }
