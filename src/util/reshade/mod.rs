@@ -3,7 +3,7 @@ use crate::context::reshade_context::key_combination::{trigger_key_combination, 
 use crate::context::reshade_context::ReshadeContext;
 use crate::util::true_if_1;
 use function_name::named;
-use log::{error, info, warn};
+use log::{error, warn};
 use regex::Regex;
 use std::fs;
 use std::path::PathBuf;
