@@ -5,8 +5,7 @@ use crate::addon::Addon;
 use crate::config::preset_rule::{PresetRule, RuleValidationError};
 use crate::context::ui::UiContext;
 use crate::render::options::{ERROR_COLOR, SUCCESS_COLOR};
-use crate::render::UiExtended;
-use nexus::imgui::{Direction, Ui};
+use nexus::imgui::{Direction, TreeNodeFlags, Ui};
 use std::path::PathBuf;
 
 impl Addon {
@@ -19,72 +18,78 @@ impl Addon {
                 self.render_rules(ui);
             }
             self.render_configuration(ui);
+            self.render_how_to_use(ui);
         }
     }
 
     fn render_rules(&mut self, ui: &Ui) {
-        ui.header("Rules");
-        if self.config.preset_rules.is_empty() {
-            ui.text_disabled("No rules defined");
-            ui.spacing();
-        } else {
-            let mut move_down_index = None;
-            let mut move_up_index = None;
-            let mut delete_index = None;
-            let mut active_labeled = false;
-            if let Some(_t) = ui.begin_table("rules", 4) {
-                ui.table_next_row();
-                let last_rule_index = self.config.preset_rules.len() - 1;
-                for (rule_index, rule) in self.config.preset_rules.iter().enumerate() {
-                    ui.table_next_column();
-                    let mut default_label = "";
-                    Self::render_move_up_button(ui, &mut move_up_index, rule_index);
-                    Self::render_move_down_button(
-                        ui,
-                        &mut move_down_index,
-                        last_rule_index,
-                        rule_index,
-                        &mut default_label,
-                    );
-                    ui.table_next_column();
-                    ui.text(&rule.rule_name);
-                    ui.table_next_column();
-                    if let Err(RuleValidationError::NoPresetSelected) = rule.validate() {
-                        ui.text_colored(ERROR_COLOR, "[invalid preset]");
-                        ui.same_line();
-                    } else if !self
-                        .context
-                        .reshade
-                        .preset_shortcut_paths
-                        .contains(&rule.preset_path)
-                    {
-                        ui.text_colored(ERROR_COLOR, "[keybind missing]");
-                        ui.same_line();
-                    }
-                    Self::render_active_label(
-                        &self.context.reshade.active_preset_path,
-                        ui,
-                        &mut active_labeled,
-                        rule,
-                    );
-                    if !default_label.is_empty() {
-                        ui.text(default_label);
-                    }
+        if ui.collapsing_header(
+            "Rules##rps",
+            TreeNodeFlags::SPAN_AVAIL_WIDTH | TreeNodeFlags::DEFAULT_OPEN,
+        ) {
+            if self.config.preset_rules.is_empty() {
+                ui.text_disabled("No rules defined");
+                ui.spacing();
+            } else {
+                let mut move_down_index = None;
+                let mut move_up_index = None;
+                let mut delete_index = None;
+                let mut active_labeled = false;
+                if let Some(_t) = ui.begin_table("rules", 4) {
+                    ui.table_next_row();
+                    let last_rule_index = self.config.preset_rules.len() - 1;
+                    for (rule_index, rule) in self.config.preset_rules.iter().enumerate() {
+                        ui.table_next_column();
+                        let mut default_label = "";
+                        Self::render_move_up_button(ui, &mut move_up_index, rule_index);
+                        Self::render_move_down_button(
+                            ui,
+                            &mut move_down_index,
+                            last_rule_index,
+                            rule_index,
+                            &mut default_label,
+                        );
+                        ui.table_next_column();
+                        ui.text(&rule.rule_name);
+                        ui.table_next_column();
+                        if let Err(RuleValidationError::NoPresetSelected) = rule.validate() {
+                            ui.text_colored(ERROR_COLOR, "[invalid preset]");
+                            ui.same_line();
+                        } else if !self
+                            .context
+                            .reshade
+                            .preset_shortcut_paths
+                            .contains(&rule.preset_path)
+                        {
+                            ui.text_colored(ERROR_COLOR, "[keybind missing]");
+                            ui.same_line();
+                        }
+                        Self::render_active_label(
+                            &self.context.reshade.active_preset_path,
+                            ui,
+                            &mut active_labeled,
+                            rule,
+                        );
+                        if !default_label.is_empty() {
+                            ui.text(default_label);
+                        }
 
-                    ui.table_next_column();
-                    Self::render_rule_button_ribbon(
-                        &mut self.context.ui,
-                        &mut delete_index,
-                        rule_index,
-                        ui,
-                    );
+                        ui.table_next_column();
+                        Self::render_rule_button_ribbon(
+                            &mut self.context.ui,
+                            &mut delete_index,
+                            rule_index,
+                            ui,
+                        );
+                    }
+                    self.post_render_rules_actions(move_down_index, move_up_index, delete_index);
                 }
-                self.post_render_rules_actions(move_down_index, move_up_index, delete_index);
             }
-        }
-        if ui.button("New rule") {
-            self.config.preset_rules.insert(0, PresetRule::default());
-            self.context.ui.rule_under_edit_index = Some(0);
+            if ui.button("New rule") {
+                self.config.preset_rules.insert(0, PresetRule::default());
+                self.context.ui.rule_under_edit_index = Some(0);
+            }
+            ui.new_line();
         }
     }
 
@@ -153,6 +158,17 @@ impl Addon {
         }
         if let Some(rule_index) = delete_index {
             self.config.preset_rules.remove(rule_index);
+        }
+    }
+
+    fn render_how_to_use(&self, ui: &Ui) {
+        if ui.collapsing_header("Usage tips##rps", TreeNodeFlags::SPAN_AVAIL_WIDTH) {
+            ui.text_disabled("\
+                1. Rules are processed from top to bottom.\n\
+                2. First successful rule is activated.\n\
+                3. If there are no matching rules, last rule on the list is used by default. Therefore conditions on a default rule may be empty.\n\
+                4. On character select, default rule will be used."
+            );
         }
     }
 }

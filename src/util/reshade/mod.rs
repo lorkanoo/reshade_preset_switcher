@@ -13,6 +13,7 @@ pub fn load_reshade_context(reshade_ini_path: &PathBuf) {
         load_active_preset_path(&content);
         load_preset_shortcut_paths(&content);
         load_keybinds(&content);
+        Addon::lock().config.reshade.ini_path = reshade_ini_path.clone();
     }
 }
 

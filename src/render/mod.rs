@@ -3,20 +3,11 @@ use nexus::imgui::Ui;
 pub mod options;
 
 trait UiExtended {
-    fn section<T: AsRef<str>>(&self, header: T);
     fn header<T: AsRef<str>>(&self, text: T);
     fn selected_file<L: AsRef<str>, F: Fn()>(&self, title: L, label: L, buf: &mut String, func: F);
-    fn separator_disabled(&self);
 }
 
 impl UiExtended for Ui<'_> {
-    fn section<T: AsRef<str>>(&self, header: T) {
-        self.new_line();
-        self.separator();
-        self.spacing();
-        self.header(header);
-    }
-
     fn header<T: AsRef<str>>(&self, text: T) {
         self.text(text);
         self.spacing();
@@ -39,10 +30,6 @@ impl UiExtended for Ui<'_> {
         if self.button(format!("Select##{}", label.as_ref())) {
             on_select();
         }
-    }
-
-    fn separator_disabled(&self) {
-        self.text_disabled("-".repeat(400));
     }
 }
 
