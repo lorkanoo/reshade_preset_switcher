@@ -20,27 +20,34 @@ Refer to [macro policy](https://help.guildwars2.com/hc/en-us/articles/3600137621
 ### ReShade.ini
 Addon integrates with Reshade.ini to read information about ReShade keybinds and presets.
 Choose ReShade.ini in the options to get started:
+
 ![ReShade.ini selection](images/reshade_ini_selection.png)
 
 ### Required ReShade configuration
 1) Addon will only detect ReShade presets that have keybinds assigned. To assign keybind, open ReShade settings and right-click a preset name:
+
 ![ReShade preset keybinds](images/reshade_preset_keybinds.png)
 
 2) Enable auto-save to make sure ReShade.ini is up to date:
+
 ![ReShade autosave](images/reshade_autosave.png)
 
 ### Optional ReShade configuration tips
 For usual gameplay, disable preset transition message in ReShade settings:
+
 ![img.png](reshade_preset_transition.png)
 
-Preset transition duration can be configured for smoother preset transitions
+Preset transition duration can be configured for smoother preset transitions:
+
 ![img.png](reshade_preset_transition_duration.png)
 
 ## Screenshots
 **Rules and configuration**
+
 ![Rules and configuration](images/rules_config.png)
 
 **Rule creation / modification**
+
 ![Rule creation](images/rule_creation.png)
 
 ## Credits
