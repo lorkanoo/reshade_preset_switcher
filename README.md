@@ -1,5 +1,5 @@
 # Reshade Preset Switcher
-Reshade Preset Switcher for Nexus.
+Reshade Preset Switcher for Nexus (Guild Wars 2 addon manager).
 
 ## Features
 - Integrates with Reshade.ini to dynamically switch presets on:
