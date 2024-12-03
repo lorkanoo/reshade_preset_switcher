@@ -5,6 +5,7 @@ pub struct UiContext {
     pub map_names: HashMap<String, String>,
     pub rule_under_edit_index: Option<usize>,
     pub map_search_term: String,
+    pub invalid_reshade_preset_configuration: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -16,6 +17,7 @@ impl Default for UiContext {
             map_names: HashMap::new(),
             rule_under_edit_index: None,
             map_search_term: "".to_string(),
+            invalid_reshade_preset_configuration: false,
         }
     }
 }

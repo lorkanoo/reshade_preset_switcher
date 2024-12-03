@@ -2,6 +2,7 @@ use crate::addon::Addon;
 use crate::render::options::ERROR_COLOR;
 use crate::render::{shorten_path, UiExtended};
 use crate::thread::select_reshade_ini_file_thread;
+use arboard::Clipboard;
 use nexus::imgui::{TreeNodeFlags, Ui};
 
 impl Addon {
@@ -21,6 +22,26 @@ impl Addon {
                         "Configure keybinds for the presets in ReShade:",
                     );
                     ui.text_disabled("1. Right-click a preset name in the preset list and choose a key.\n2. Switch to different preset in ReShade manually to save the changes.");
+                    ui.spacing();
+                }
+                if self.context.ui.invalid_reshade_preset_configuration {
+                    ui.text_colored(
+                        ERROR_COLOR,
+                        "ReShade preset keybind configuration is corrupt.\n\
+                        This may happen when presets are renamed without removing keybinds.\n\
+                        Presets will not switch correctly if keybinds overlap.",
+                    );
+                    ui.text_disabled("To fix an issue:\n\
+                        1. Press 'Copy to clipboard' button to copy valid configuration.\n\
+                        2. Exit the game.\n\
+                        3. Open ReShade.ini and replace 'PresetShortcutKeys' and 'PresetShortcutPaths' with copied values."
+                    );
+                    if ui.button("Copy to clipboard") {
+                        let mut clipboard = Clipboard::new().unwrap();
+                        clipboard
+                            .set_text(self.context.reshade.as_reshade_shortcut_configuration())
+                            .unwrap();
+                    }
                     ui.spacing();
                 }
             }

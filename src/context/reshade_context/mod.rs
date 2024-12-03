@@ -40,4 +40,41 @@ impl ReshadeContext {
         self.verify_activation = None;
         false
     }
+
+    pub fn as_reshade_shortcut_configuration(&self) -> String {
+        let preset_shortcut_paths = format!(
+            "PresetShortcutPaths={}",
+            self.preset_shortcut_paths
+                .iter()
+                .map(|path| path.to_string_lossy().to_string())
+                .collect::<Vec<String>>()
+                .join(",")
+        );
+        let mut preset_shortcut_keys = String::new();
+        preset_shortcut_keys.push_str("PresetShortcutKeys=");
+
+        let iter = &mut self.preset_shortcut_keys.iter().peekable();
+        while let Some(key_combination) = iter.next() {
+            preset_shortcut_keys.push_str(key_combination.key_code.as_str());
+            preset_shortcut_keys.push(',');
+            preset_shortcut_keys.push_str(bool_to_string(key_combination.ctrl).as_str());
+            preset_shortcut_keys.push(',');
+            preset_shortcut_keys.push_str(bool_to_string(key_combination.shift).as_str());
+            preset_shortcut_keys.push(',');
+            preset_shortcut_keys.push_str(bool_to_string(key_combination.alt).as_str());
+
+            if iter.peek().is_some() {
+                preset_shortcut_keys.push(',');
+            }
+        }
+        format!("{}\n{}", preset_shortcut_keys, preset_shortcut_paths)
+    }
+}
+
+fn bool_to_string(b: bool) -> String {
+    if b {
+        "1".to_string()
+    } else {
+        "0".to_string()
+    }
 }

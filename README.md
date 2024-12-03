@@ -35,11 +35,11 @@ Choose ReShade.ini in the options to get started:
 ### Optional ReShade configuration tips
 For usual gameplay, disable preset transition message in ReShade settings:
 
-![img.png](reshade_preset_transition.png)
+![img.png](images/reshade_preset_transition.png)
 
 Preset transition duration can be configured for smoother preset transitions:
 
-![img.png](reshade_preset_transition_duration.png)
+![img.png](images/reshade_preset_transition_duration.png)
 
 ## Screenshots
 **Rules and configuration**

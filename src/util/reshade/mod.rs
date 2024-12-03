@@ -1,9 +1,9 @@
 use crate::addon::Addon;
 use crate::context::reshade_context::key_combination::{trigger_key_combination, KeyCombination};
 use crate::context::reshade_context::ReshadeContext;
+use crate::util::error;
 use crate::util::true_if_1;
 use function_name::named;
-use log::{error, warn};
 use regex::Regex;
 use std::fs;
 use std::path::PathBuf;
@@ -11,8 +11,7 @@ use std::path::PathBuf;
 pub fn load_reshade_context(reshade_ini_path: &PathBuf) {
     if let Ok(content) = fs::read_to_string(reshade_ini_path) {
         load_active_preset_path(&content);
-        load_preset_shortcut_paths(&content);
-        load_keybinds(&content);
+        load_presets(&content);
         Addon::lock().config.reshade.ini_path = reshade_ini_path.clone();
     }
 }
@@ -25,47 +24,57 @@ fn load_active_preset_path(content: &str) {
     }
 }
 
-fn load_preset_shortcut_paths(content: &str) {
-    let re = Regex::new(r"(?m)^PresetShortcutPaths=(.*)$").unwrap();
-    if let Some(captures) = re.captures(content) {
-        Addon::lock().context.reshade.preset_shortcut_paths = captures[1]
-            .trim()
-            .split(',')
-            .filter(|s| !s.is_empty())
-            .map(PathBuf::from)
-            .collect();
-    }
-}
+fn load_presets(content: &str) {
+    let mut invalid_reshade_preset_configuration = false;
+    let mut result_paths = vec![];
+    let mut result_keys = vec![];
 
-#[named]
-fn load_keybinds(content: &str) {
-    let re = Regex::new(r"(?m)^PresetShortcutKeys=(.*)$").unwrap();
-    let mut preset_shortcut_keys = vec![];
-    if let Some(captures) = re.captures(content) {
-        let keys: Vec<String> = captures[1]
-            .trim()
-            .split(',')
-            .filter(|s| !s.is_empty())
-            .map(String::from)
-            .collect();
-        for chunk in keys.chunks(4) {
-            let key_code = chunk.first().unwrap().as_str().to_string();
-            let mut key_combination = KeyCombination {
-                key_code,
-                ctrl: false,
-                shift: false,
-                alt: false,
-            };
-            key_combination.ctrl = keys.get(1).map(true_if_1()).unwrap_or(false);
-            key_combination.shift = keys.get(2).map(true_if_1()).unwrap_or(false);
-            key_combination.alt = keys.get(3).map(true_if_1()).unwrap_or(false);
+    let paths_re = Regex::new(r"(?m)^PresetShortcutPaths=(.*)$").unwrap();
+    let keys_re = Regex::new(r"(?m)^PresetShortcutKeys=(.*)$").unwrap();
+    if let Some(paths_captures) = paths_re.captures(content) {
+        if let Some(keys_captures) = keys_re.captures(content) {
+            let paths: Vec<PathBuf> = paths_captures[1]
+                .trim()
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(PathBuf::from)
+                .collect();
+            let keys: Vec<String> = keys_captures[1]
+                .trim()
+                .split(',')
+                .filter(|s| !s.is_empty())
+                .map(String::from)
+                .collect();
 
-            preset_shortcut_keys.push(key_combination);
+            for (i, chunk) in keys.chunks(4).enumerate() {
+                if let Some(path) = paths.get(i) {
+                    if path.exists() {
+                        let key_code = chunk.first().unwrap().as_str().to_string();
+                        let mut key_combination = KeyCombination {
+                            key_code,
+                            ctrl: false,
+                            shift: false,
+                            alt: false,
+                        };
+                        key_combination.ctrl = chunk.get(1).map(true_if_1()).unwrap_or(false);
+                        key_combination.shift = chunk.get(2).map(true_if_1()).unwrap_or(false);
+                        key_combination.alt = chunk.get(3).map(true_if_1()).unwrap_or(false);
+
+                        result_paths.push(path.clone());
+                        result_keys.push(key_combination);
+                    } else {
+                        invalid_reshade_preset_configuration = true;
+                    }
+                }
+            }
         }
-        Addon::lock().context.reshade.preset_shortcut_keys = preset_shortcut_keys;
-    } else {
-        warn!("[{}] Could not find keybinds", function_name!());
+        Addon::lock().context.reshade.preset_shortcut_paths = result_paths;
+        Addon::lock().context.reshade.preset_shortcut_keys = result_keys;
     }
+    Addon::lock()
+        .context
+        .ui
+        .invalid_reshade_preset_configuration = invalid_reshade_preset_configuration;
 }
 
 #[named]
