@@ -7,4 +7,5 @@ use serde::{Deserialize, Serialize};
 pub enum ConditionData {
     Maps(Vec<u32>),
     Time(TimePeriods),
+    Chance(f32),
 }

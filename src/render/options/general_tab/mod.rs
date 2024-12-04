@@ -89,6 +89,10 @@ impl Addon {
                 self.config.preset_rules.insert(0, PresetRule::default());
                 self.context.ui.rule_under_edit_index = Some(0);
             }
+            ui.same_line();
+            if ui.button("Process rules now") {
+                self.context.process_manually = true;
+            }
             ui.new_line();
         }
     }

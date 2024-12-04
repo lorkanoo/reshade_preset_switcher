@@ -1,6 +1,6 @@
 [package]
 name = "reshade_preset_switcher"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["lorkanoo"]
 edition = "2021"
 description = "Reshade preset switcher"
@@ -25,6 +25,7 @@ semver = "1.0.23"
 rdev = "0.5.3"
 rfd = "0.15.1"
 arboard = "3.4.1"
+rand = "0.8.5"
 
 [build-dependencies]
 winresource = "0.1.17"

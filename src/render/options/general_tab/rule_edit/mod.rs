@@ -13,7 +13,8 @@ use function_name::named;
 use log::error;
 use nexus::data_link::mumble::MumblePtr;
 use nexus::imgui::{TreeNodeFlags, Ui};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::mem;
 
 impl Addon {
     pub fn render_rule_edit(&mut self, rule_index: usize, ui: &Ui) {
@@ -107,23 +108,17 @@ impl Addon {
             if rule.conditions.is_empty() {
                 ui.text_disabled("No conditions");
             }
-            let mut has_map_condition = false;
-            let mut has_time_condition = false;
+            let mut rendered_conditions: HashSet<mem::Discriminant<ConditionData>> = HashSet::new();
             let mut delete_index = None;
             let mut rule_condition_iter = rule.conditions.iter_mut().enumerate().peekable();
             while let Some((condition_index, rule_condition)) = rule_condition_iter.next() {
-                Self::render_condition_data(
-                    context,
-                    ui,
-                    &mut has_map_condition,
-                    &mut has_time_condition,
-                    rule_condition,
-                );
+                Self::render_condition_data(context, ui, &mut rendered_conditions, rule_condition);
                 ui.spacing();
                 if ui.button(format!("Delete##rule_condition{}", condition_index)) {
                     delete_index = Some(condition_index);
                 }
                 if let Some((next_index, next_condition)) = rule_condition_iter.peek_mut() {
+                    ui.new_line();
                     ui.separator();
                     if ui.button(format!(
                         "{}##rule_condition{}",
@@ -137,7 +132,7 @@ impl Addon {
                 rule.conditions.remove(index);
             }
             ui.spacing();
-            Self::render_condition_creator(rule, ui, has_map_condition, has_time_condition);
+            Self::render_condition_creator(rule, ui, rendered_conditions);
             ui.new_line();
         }
     }
@@ -145,36 +140,51 @@ impl Addon {
     fn render_condition_creator(
         rule: &mut PresetRule,
         ui: &Ui,
-        has_map_condition: bool,
-        has_time_condition: bool,
+        rendered_conditions: HashSet<mem::Discriminant<ConditionData>>,
     ) {
-        if !(has_map_condition && has_time_condition) {
+        if rendered_conditions.len() != 3 {
+            ui.new_line();
             ui.separator();
-            ui.spacing();
             ui.header("Add new condition:");
-        }
-        if !has_map_condition {
-            if ui.button("Map") {
-                rule.conditions.push(RuleCondition::new(
-                    ConditionData::Maps(Vec::new()),
-                    ConjunctionType::And,
-                ))
+
+            if !rendered_conditions
+                .contains(&mem::discriminant(&ConditionData::Maps(Default::default())))
+            {
+                if ui.button("Map") {
+                    rule.conditions.push(RuleCondition::new(
+                        ConditionData::Maps(Vec::new()),
+                        ConjunctionType::And,
+                    ))
+                }
+                ui.same_line();
             }
-            ui.same_line();
-        }
-        if !has_time_condition && ui.button("Time") {
-            rule.conditions.push(RuleCondition::new(
-                ConditionData::Time(TimePeriods::default()),
-                ConjunctionType::And,
-            ));
+            if !rendered_conditions
+                .contains(&mem::discriminant(&ConditionData::Time(Default::default())))
+            {
+                if ui.button("Time") {
+                    rule.conditions.push(RuleCondition::new(
+                        ConditionData::Time(TimePeriods::default()),
+                        ConjunctionType::And,
+                    ));
+                }
+                ui.same_line();
+            }
+            if !rendered_conditions.contains(&mem::discriminant(&ConditionData::Chance(
+                Default::default(),
+            ))) && ui.button("Chance")
+            {
+                rule.conditions.push(RuleCondition::new(
+                    ConditionData::Chance(0.0),
+                    ConjunctionType::And,
+                ));
+            }
         }
     }
 
     fn render_condition_data(
         context: &mut Context,
         ui: &Ui,
-        has_map_condition: &mut bool,
-        has_time_condition: &mut bool,
+        rendered_conditions: &mut HashSet<mem::Discriminant<ConditionData>>,
         rule_condition: &mut RuleCondition,
     ) {
         ui.spacing();
@@ -187,13 +197,15 @@ impl Addon {
                     &mut context.ui.map_search_term,
                     ui,
                 );
-                *has_map_condition = true;
             }
             ConditionData::Time(time_periods) => {
                 Self::render_time_condition_data(time_periods, ui);
-                *has_time_condition = true;
+            }
+            ConditionData::Chance(chance) => {
+                Self::render_chance_condition_data(chance, ui);
             }
         }
+        rendered_conditions.insert(mem::discriminant(&rule_condition.data));
     }
 
     fn render_time_condition_data(time_periods: &mut TimePeriods, ui: &Ui) {
@@ -299,5 +311,10 @@ impl Addon {
                 ui.new_line();
             }
         }
+    }
+
+    fn render_chance_condition_data(chance: &mut f32, ui: &Ui) {
+        ui.header("Activation chance:");
+        ui.slider_percent("Chance (%)", chance);
     }
 }

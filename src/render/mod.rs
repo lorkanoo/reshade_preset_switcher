@@ -1,10 +1,11 @@
-use nexus::imgui::Ui;
+use nexus::imgui::{Slider, SliderFlags, Ui};
 
 pub mod options;
 
 trait UiExtended {
     fn header<T: AsRef<str>>(&self, text: T);
     fn selected_file<L: AsRef<str>, F: Fn()>(&self, title: L, label: L, buf: &mut String, func: F);
+    fn slider_percent(&self, label: impl AsRef<str>, value: &mut f32) -> bool;
 }
 
 impl UiExtended for Ui<'_> {
@@ -29,6 +30,20 @@ impl UiExtended for Ui<'_> {
         self.same_line();
         if self.button(format!("Select##{}", label.as_ref())) {
             on_select();
+        }
+    }
+
+    fn slider_percent(&self, label: impl AsRef<str>, value: &mut f32) -> bool {
+        let mut percent = *value * 100.0;
+        if Slider::new(label, 0.0, 100.0f32)
+            .flags(SliderFlags::ALWAYS_CLAMP)
+            .display_format("%.2f")
+            .build(self, &mut percent)
+        {
+            *value = percent / 100.0;
+            true
+        } else {
+            false
         }
     }
 }

@@ -9,6 +9,7 @@ use crate::context::Context;
 use crate::util::reshade::switch_to_preset;
 use function_name::named;
 use log::debug;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -54,46 +55,54 @@ impl PresetRule {
         let validation_result = self.validate();
         if validation_result.is_ok() {
             let mut rule_fulfilled = false;
+            let mut inside_failed_and_chain = false;
             let rule_condition_iter = &mut self.conditions.iter().peekable();
             while let Some(rule_condition) = rule_condition_iter.next() {
-                let condition_fulfilled = match &rule_condition.data {
-                    ConditionData::Maps(maps) => maps.contains(current_map_id),
-                    ConditionData::Time(time_periods) => {
-                        debug!(
-                            "[{}] Current time period: {:?}",
-                            function_name!(),
-                            context.current_time_period
-                        );
-                        debug!(
-                            "[{}] Rule time periods: {:?}",
-                            function_name!(),
-                            time_periods
-                        );
-                        match context.current_time_period {
-                            CurrentTimePeriod::Day => time_periods.day,
-                            CurrentTimePeriod::Dusk => time_periods.dusk,
-                            CurrentTimePeriod::Night => time_periods.night,
-                            CurrentTimePeriod::Dawn => time_periods.dawn,
+                let current_condition_fullfiled = {
+                    if inside_failed_and_chain {
+                        false
+                    } else {
+                        match &rule_condition.data {
+                            ConditionData::Maps(maps) => maps.contains(current_map_id),
+                            ConditionData::Time(time_periods) => {
+                                match context.current_time_period {
+                                    CurrentTimePeriod::Day => time_periods.day,
+                                    CurrentTimePeriod::Dusk => time_periods.dusk,
+                                    CurrentTimePeriod::Night => time_periods.night,
+                                    CurrentTimePeriod::Dawn => time_periods.dawn,
+                                }
+                            }
+                            ConditionData::Chance(chance) => {
+                                let mut gen = rand::thread_rng();
+                                let roll = gen.gen_range(0.0..=1.0);
+                                roll <= *chance
+                            }
                         }
                     }
                 };
 
                 match rule_condition_iter.peek() {
                     None => {
-                        rule_fulfilled = condition_fulfilled;
+                        //never true if inside_failed_and_chain
+                        rule_fulfilled = current_condition_fullfiled;
                         break;
                     }
                     Some(next) => match next.conjunction_type {
                         ConjunctionType::Or => {
-                            if condition_fulfilled {
+                            //fresh card - ignore all previous failures
+                            inside_failed_and_chain = false;
+                            if current_condition_fullfiled {
                                 rule_fulfilled = true;
+                                debug!("[{}] Success because of 'or' part", function_name!());
                                 break;
                             }
                         }
                         ConjunctionType::And => {
-                            if !condition_fulfilled {
+                            //unfulfilled 'and' starts failed_and_chain until 'or' is encountered
+                            if !current_condition_fullfiled || inside_failed_and_chain {
                                 rule_fulfilled = false;
-                                break;
+                                inside_failed_and_chain = true;
+                                debug!("[{}] Failure due to 'and' part", function_name!());
                             }
                         }
                     },

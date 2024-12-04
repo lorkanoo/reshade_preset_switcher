@@ -9,6 +9,7 @@ const RETRY_COUNT: usize = 3;
 #[named]
 pub fn process_preset_rules(new_map_id: u32) {
     let mut rule_index_to_activate = None;
+    Addon::lock().context.process_manually = false;
     if !is_on_character_select() {
         let addon = Addon::lock();
         for (rule_index, preset_rule) in addon.config.preset_rules.iter().enumerate() {

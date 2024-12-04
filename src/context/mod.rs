@@ -22,6 +22,7 @@ pub struct Context {
     pub ui: UiContext,
     pub reshade: ReshadeContext,
     pub current_time_period: CurrentTimePeriod,
+    pub process_manually: bool,
 }
 
 impl Default for Context {
@@ -33,6 +34,7 @@ impl Default for Context {
             ui: UiContext::default(),
             reshade: ReshadeContext::default(),
             current_time_period: current_time_period(tyrian_time_thresholds()),
+            process_manually: false,
         }
     }
 }

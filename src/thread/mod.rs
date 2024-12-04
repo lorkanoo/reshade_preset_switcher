@@ -24,6 +24,7 @@ pub fn background_thread() {
                 let mut new_map_id: u32 = 0;
                 if Addon::lock().context.map_changed(&mut new_map_id)
                     || (is_in_game() && Addon::lock().context.time_period_changed(&mut new_map_id))
+                    || Addon::lock().context.process_manually
                 {
                     process_preset_rules(new_map_id);
                 } else if Addon::lock().context.reshade.should_retry_activation() {
