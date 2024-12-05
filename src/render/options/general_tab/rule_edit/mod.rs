@@ -15,6 +15,7 @@ use nexus::data_link::mumble::MumblePtr;
 use nexus::imgui::{TreeNodeFlags, Ui};
 use std::collections::{HashMap, HashSet};
 use std::mem;
+use std::path::PathBuf;
 
 impl Addon {
     pub fn render_rule_edit(&mut self, rule_index: usize, ui: &Ui) {
@@ -47,7 +48,6 @@ impl Addon {
         }
     }
 
-    #[named]
     fn render_preset_picker(reshade_context: &ReshadeContext, rule: &mut PresetRule, ui: &Ui) {
         if ui.collapsing_header(
             "Preset to activate##rps",
@@ -75,27 +75,34 @@ impl Addon {
                 1. Right-click a preset name in the preset list and choose a key.\n\
                 2. Switch to different preset in ReShade manually to save the changes.",
             );
-            for chunk in reshade_context.preset_shortcut_paths.chunks(4) {
-                for preset_path in chunk {
-                    if rule.preset_path == *preset_path {
-                        continue;
-                    }
-                    if let Some(filename) = preset_path.file_stem().and_then(|fs| fs.to_str()) {
-                        if ui.button(filename) {
-                            rule.preset_path = preset_path.clone();
-                        }
-                    } else {
-                        error!(
-                            "[{}] Could not parse filename for preset path [{:?}]",
-                            function_name!(),
-                            preset_path
-                        );
-                    }
+            Self::render_preset_options(reshade_context, rule, ui);
+            ui.new_line();
+        }
+    }
 
-                    ui.same_line();
+    #[named]
+    fn render_preset_options(reshade_context: &ReshadeContext, rule: &mut PresetRule, ui: &Ui) {
+        let mut sorted: Vec<PathBuf> = reshade_context.preset_shortcuts.right_values().cloned().collect();
+        sorted.sort();
+        for chunks in sorted.chunks(4) {
+            for preset_path in chunks {
+                if rule.preset_path == *preset_path {
+                    continue;
                 }
-                ui.new_line();
+                if let Some(filename) = preset_path.file_stem().and_then(|fs| fs.to_str()) {
+                    if ui.button(filename) {
+                        rule.preset_path = preset_path.clone();
+                    }
+                } else {
+                    error!(
+                        "[{}] Could not parse filename for preset path [{:?}]",
+                        function_name!(),
+                        preset_path
+                    );
+                }
+                ui.same_line();
             }
+            ui.new_line();
         }
     }
 
@@ -142,7 +149,7 @@ impl Addon {
         ui: &Ui,
         rendered_conditions: HashSet<mem::Discriminant<ConditionData>>,
     ) {
-        if rendered_conditions.len() != 3 {
+        if rendered_conditions.len() != 5 {
             ui.new_line();
             ui.separator();
             ui.header("Add new condition:");
@@ -153,6 +160,17 @@ impl Addon {
                 if ui.button("Map") {
                     rule.conditions.push(RuleCondition::new(
                         ConditionData::Maps(Vec::new()),
+                        ConjunctionType::And,
+                    ))
+                }
+                ui.same_line();
+            }
+            if !rendered_conditions
+                .contains(&mem::discriminant(&ConditionData::BlacklistedMaps(Default::default())))
+            {
+                if ui.button("Blacklisted map") {
+                    rule.conditions.push(RuleCondition::new(
+                        ConditionData::BlacklistedMaps(Vec::new()),
                         ConjunctionType::And,
                     ))
                 }
@@ -190,11 +208,18 @@ impl Addon {
         ui.spacing();
         match &mut rule_condition.data {
             ConditionData::Maps(maps) => {
-                let map_names = &context.ui.map_names;
                 Self::render_maps_condition_data(
-                    map_names,
+                    &context.ui.map_names,
                     maps,
                     &mut context.ui.map_search_term,
+                    ui,
+                );
+            },
+            ConditionData::BlacklistedMaps(maps) => {
+                Self::render_blacklisted_maps_condition_data(
+                    &context.ui.map_names,
+                    maps,
+                    &mut context.ui.blacklist_map_search_term,
                     ui,
                 );
             }
@@ -250,7 +275,7 @@ impl Addon {
                     ui.table_next_column();
                     ui.text_colored(ERROR_COLOR, "[X]");
                     ui.same_line_with_pos(-10f32);
-                    if ui.invisible_button(format!("-##prm{}", map_id), [30f32, 30f32]) {
+                    if ui.invisible_button(format!("-##rule_maps{}", map_id), [30f32, 30f32]) {
                         to_remove.push(i);
                     }
                     if ui.is_item_hovered() {
@@ -268,7 +293,47 @@ impl Addon {
         }
 
         ui.spacing();
-        ui.input_text("Search maps", map_search_term).build();
+        ui.input_text("Search maps##whitelisted", map_search_term).build();
+        let search_term = &map_search_term.to_lowercase();
+        Self::search_maps(search_term, map_names, maps, ui);
+    }
+
+    fn render_blacklisted_maps_condition_data(
+        map_names: &HashMap<String, String>,
+        maps: &mut Vec<u32>,
+        map_search_term: &mut String,
+        ui: &Ui,
+    ) {
+        ui.header("Blacklisted maps:");
+        if maps.is_empty() {
+            ui.text_disabled("No maps");
+        } else {
+            let mut to_remove = Vec::new();
+            if let Some(_t) = ui.begin_table("blacklisted_rule_maps", 3) {
+                ui.table_next_row();
+                for (i, map_id) in maps.iter().enumerate() {
+                    ui.table_next_column();
+                    ui.text_colored(ERROR_COLOR, "[X]");
+                    ui.same_line_with_pos(-10f32);
+                    if ui.invisible_button(format!("-##blacklisted_rule_maps{}", map_id), [30f32, 30f32]) {
+                        to_remove.push(i);
+                    }
+                    if ui.is_item_hovered() {
+                        ui.tooltip_text(format!("Map id: {}", map_id));
+                    }
+                    ui.same_line_with_pos(24f32);
+                    let map_id_str = &map_id.to_string();
+                    let map_name = map_names.get(map_id_str).unwrap_or(map_id_str);
+                    ui.text(map_name);
+                }
+            }
+            for map_index in to_remove {
+                maps.remove(map_index);
+            }
+        }
+
+        ui.spacing();
+        ui.input_text("Search maps##blacklisted", map_search_term).build();
         let search_term = &map_search_term.to_lowercase();
         Self::search_maps(search_term, map_names, maps, ui);
     }

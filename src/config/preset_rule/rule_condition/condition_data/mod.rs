@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConditionData {
     Maps(Vec<u32>),
+    BlacklistedMaps(Vec<u32>),
     Time(TimePeriods),
     Chance(f32),
 }

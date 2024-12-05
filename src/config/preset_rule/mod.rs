@@ -64,6 +64,7 @@ impl PresetRule {
                     } else {
                         match &rule_condition.data {
                             ConditionData::Maps(maps) => maps.contains(current_map_id),
+                            ConditionData::BlacklistedMaps(maps) => !maps.contains(current_map_id),
                             ConditionData::Time(time_periods) => {
                                 match context.current_time_period {
                                     CurrentTimePeriod::Day => time_periods.day,

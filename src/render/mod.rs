@@ -61,3 +61,9 @@ fn shorten_path(path_str: String) -> String {
         .collect();
     format!("..\\{}", last_three.join("\\"))
 }
+enum UiAction {
+    MoveDown(usize),
+    MoveUp(usize),
+    Delete(usize),
+    Clone(usize),
+}

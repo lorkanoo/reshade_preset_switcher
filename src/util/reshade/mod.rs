@@ -3,6 +3,7 @@ use crate::context::reshade_context::key_combination::{trigger_key_combination, 
 use crate::context::reshade_context::ReshadeContext;
 use crate::util::error;
 use crate::util::true_if_1;
+use bimap::BiMap;
 use function_name::named;
 use regex::Regex;
 use std::fs;
@@ -26,8 +27,7 @@ fn load_active_preset_path(content: &str) {
 
 fn load_presets(content: &str) {
     let mut invalid_reshade_preset_configuration = false;
-    let mut result_paths = vec![];
-    let mut result_keys = vec![];
+    let mut preset_shortcuts: BiMap<KeyCombination, PathBuf> = BiMap::new();
 
     let paths_re = Regex::new(r"(?m)^PresetShortcutPaths=(.*)$").unwrap();
     let keys_re = Regex::new(r"(?m)^PresetShortcutKeys=(.*)$").unwrap();
@@ -59,17 +59,14 @@ fn load_presets(content: &str) {
                         key_combination.ctrl = chunk.get(1).map(true_if_1()).unwrap_or(false);
                         key_combination.shift = chunk.get(2).map(true_if_1()).unwrap_or(false);
                         key_combination.alt = chunk.get(3).map(true_if_1()).unwrap_or(false);
-
-                        result_paths.push(path.clone());
-                        result_keys.push(key_combination);
+                        preset_shortcuts.insert(key_combination, path.clone());
                     } else {
                         invalid_reshade_preset_configuration = true;
                     }
                 }
             }
         }
-        Addon::lock().context.reshade.preset_shortcut_paths = result_paths;
-        Addon::lock().context.reshade.preset_shortcut_keys = result_keys;
+        Addon::lock().context.reshade.preset_shortcuts = preset_shortcuts;
     }
     Addon::lock()
         .context
@@ -79,20 +76,12 @@ fn load_presets(content: &str) {
 
 #[named]
 pub fn switch_to_preset(preset_path: &PathBuf, context: &ReshadeContext) {
-    if let Some(index) = context
-        .preset_shortcut_paths
-        .iter()
-        .position(|path| path == preset_path)
-    {
-        if let Some(key_combination) = context.preset_shortcut_keys.get(index) {
-            trigger_key_combination(key_combination);
-        } else {
-            error!(
-                "[{}] Could not find key combination for preset",
-                function_name!()
-            );
-        }
+    if let Some(key_combination) = context.preset_shortcuts.get_by_right(preset_path) {
+        trigger_key_combination(key_combination);
     } else {
-        error!("[{}] Could not find preset path", function_name!());
+        error!(
+            "[{}] Could not find key combination for preset",
+            function_name!()
+        );
     }
 }

@@ -2,10 +2,11 @@ use function_name::named;
 use log::error;
 use rdev::{EventType, Key};
 use serde::{Deserialize, Serialize};
-use std::thread;
+use std::fmt::Formatter;
 use std::time::Duration;
+use std::{fmt, thread};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct KeyCombination {
     pub key_code: String,
     pub ctrl: bool,
@@ -21,6 +22,27 @@ impl Default for KeyCombination {
             shift: Default::default(),
             alt: Default::default(),
         }
+    }
+}
+
+impl fmt::Display for KeyCombination {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut result = "".to_string();
+        if self.ctrl {
+            result.push_str("Ctrl+");
+        }
+        if self.shift {
+            result.push_str("Shift+");
+        }
+        if self.alt {
+            result.push_str("Alt+");
+        }
+        if let Ok(code) = self.key_code.parse::<u32>() {
+            if let Some(ch) = char::from_u32(code) {
+                result.push(ch);
+            }
+        }
+        write!(f, "{}", result)
     }
 }
 

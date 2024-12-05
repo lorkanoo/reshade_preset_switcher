@@ -16,7 +16,7 @@ impl Addon {
             let mut path = "Select ReShade.ini".to_string();
             if !path_str.is_empty() {
                 path = shorten_path(path_str);
-                if self.context.reshade.preset_shortcut_paths.is_empty() {
+                if self.context.reshade.preset_shortcuts.is_empty() {
                     ui.text_colored(
                         ERROR_COLOR,
                         "Configure keybinds for the presets in ReShade:",
