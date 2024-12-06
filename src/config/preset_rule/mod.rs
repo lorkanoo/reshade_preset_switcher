@@ -6,6 +6,7 @@ use crate::config::preset_rule::rule_condition::RuleCondition;
 use crate::context::reshade_context::ReshadeContext;
 use crate::context::time_period::CurrentTimePeriod;
 use crate::context::Context;
+use crate::render::util::ui::UiElement;
 use crate::util::reshade::switch_to_preset;
 use function_name::named;
 use log::debug;
@@ -39,6 +40,16 @@ impl Default for PresetRule {
             preset_path: Default::default(),
             conditions: Vec::new(),
         }
+    }
+}
+
+impl UiElement for PresetRule {
+    fn rename(&mut self, new_name: String) {
+        self.rule_name = new_name;
+    }
+
+    fn name(&self) -> &String {
+        &self.rule_name
     }
 }
 

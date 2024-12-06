@@ -1,6 +1,7 @@
 use crate::addon::Addon;
 use crate::render::options::ERROR_COLOR;
-use crate::render::{shorten_path, UiExtended};
+use crate::render::util::shorten_path;
+use crate::render::util::ui::extended::UiExtended;
 use crate::thread::select_reshade_ini_file_thread;
 use arboard::Clipboard;
 use nexus::imgui::{TreeNodeFlags, Ui};

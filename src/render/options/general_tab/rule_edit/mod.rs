@@ -8,7 +8,8 @@ use crate::config::SwitchValue;
 use crate::context::reshade_context::ReshadeContext;
 use crate::context::Context;
 use crate::render::options::ERROR_COLOR;
-use crate::render::UiExtended;
+use crate::render::util::ui::extended::UiExtended;
+use crate::render::util::ui::{process_ui_actions_for_vec, UiAction};
 use function_name::named;
 use log::error;
 use nexus::data_link::mumble::MumblePtr;
@@ -82,7 +83,11 @@ impl Addon {
 
     #[named]
     fn render_preset_options(reshade_context: &ReshadeContext, rule: &mut PresetRule, ui: &Ui) {
-        let mut sorted: Vec<PathBuf> = reshade_context.preset_shortcuts.right_values().cloned().collect();
+        let mut sorted: Vec<PathBuf> = reshade_context
+            .preset_shortcuts
+            .right_values()
+            .cloned()
+            .collect();
         sorted.sort();
         for chunks in sorted.chunks(4) {
             for preset_path in chunks {
@@ -116,13 +121,17 @@ impl Addon {
                 ui.text_disabled("No conditions");
             }
             let mut rendered_conditions: HashSet<mem::Discriminant<ConditionData>> = HashSet::new();
-            let mut delete_index = None;
+            let mut ui_actions: Vec<UiAction> = vec![];
+            let last_i = rule.conditions.len() - 1;
             let mut rule_condition_iter = rule.conditions.iter_mut().enumerate().peekable();
-            while let Some((condition_index, rule_condition)) = rule_condition_iter.next() {
+            while let Some((i, rule_condition)) = rule_condition_iter.next() {
                 Self::render_condition_data(context, ui, &mut rendered_conditions, rule_condition);
                 ui.spacing();
-                if ui.button(format!("Delete##rule_condition{}", condition_index)) {
-                    delete_index = Some(condition_index);
+                ui.move_up_button(&mut ui_actions, i);
+                ui.move_down_button(&mut ui_actions, i, last_i);
+                ui.same_line();
+                if ui.button(format!("Delete##rule_condition{}", i)) {
+                    ui_actions.push(UiAction::Delete(i));
                 }
                 if let Some((next_index, next_condition)) = rule_condition_iter.peek_mut() {
                     ui.new_line();
@@ -135,9 +144,8 @@ impl Addon {
                     }
                 }
             }
-            if let Some(index) = delete_index {
-                rule.conditions.remove(index);
-            }
+
+            process_ui_actions_for_vec(&mut rule.conditions, ui_actions);
             ui.spacing();
             Self::render_condition_creator(rule, ui, rendered_conditions);
             ui.new_line();
@@ -165,9 +173,9 @@ impl Addon {
                 }
                 ui.same_line();
             }
-            if !rendered_conditions
-                .contains(&mem::discriminant(&ConditionData::BlacklistedMaps(Default::default())))
-            {
+            if !rendered_conditions.contains(&mem::discriminant(&ConditionData::BlacklistedMaps(
+                Default::default(),
+            ))) {
                 if ui.button("Blacklisted map") {
                     rule.conditions.push(RuleCondition::new(
                         ConditionData::BlacklistedMaps(Vec::new()),
@@ -214,7 +222,7 @@ impl Addon {
                     &mut context.ui.map_search_term,
                     ui,
                 );
-            },
+            }
             ConditionData::BlacklistedMaps(maps) => {
                 Self::render_blacklisted_maps_condition_data(
                     &context.ui.map_names,
@@ -249,9 +257,10 @@ impl Addon {
         if ui.button("Close") {
             self.context.ui.rule_under_edit_index = None;
             self.context.ui.map_search_term = "".to_string();
+            self.context.ui.blacklist_map_search_term = "".to_string();
         }
         ui.same_line();
-        if ui.button("Delete") {
+        if ui.button("Delete rule") {
             self.config.preset_rules.remove(rule_index);
             self.context.ui.rule_under_edit_index = None;
         }
@@ -293,7 +302,8 @@ impl Addon {
         }
 
         ui.spacing();
-        ui.input_text("Search maps##whitelisted", map_search_term).build();
+        ui.input_text("Search maps##whitelisted", map_search_term)
+            .build();
         let search_term = &map_search_term.to_lowercase();
         Self::search_maps(search_term, map_names, maps, ui);
     }
@@ -315,7 +325,10 @@ impl Addon {
                     ui.table_next_column();
                     ui.text_colored(ERROR_COLOR, "[X]");
                     ui.same_line_with_pos(-10f32);
-                    if ui.invisible_button(format!("-##blacklisted_rule_maps{}", map_id), [30f32, 30f32]) {
+                    if ui.invisible_button(
+                        format!("-##blacklisted_rule_maps{}", map_id),
+                        [30f32, 30f32],
+                    ) {
                         to_remove.push(i);
                     }
                     if ui.is_item_hovered() {
@@ -333,7 +346,8 @@ impl Addon {
         }
 
         ui.spacing();
-        ui.input_text("Search maps##blacklisted", map_search_term).build();
+        ui.input_text("Search maps##blacklisted", map_search_term)
+            .build();
         let search_term = &map_search_term.to_lowercase();
         Self::search_maps(search_term, map_names, maps, ui);
     }

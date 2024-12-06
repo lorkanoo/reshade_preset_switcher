@@ -5,8 +5,9 @@ use crate::addon::Addon;
 use crate::config::preset_rule::{PresetRule, RuleValidationError};
 use crate::context::ui::UiContext;
 use crate::render::options::{ERROR_COLOR, SUCCESS_COLOR};
-use nexus::imgui::{Direction, MenuItem, StyleColor, TreeNodeFlags, Ui};
-use crate::render::UiAction;
+use crate::render::util::ui::extended::UiExtended;
+use crate::render::util::ui::{process_ui_actions_for_vec, UiAction};
+use nexus::imgui::{MenuItem, TreeNodeFlags, Ui};
 
 impl Addon {
     pub fn render_general_tab(&mut self, ui: &Ui) {
@@ -53,13 +54,11 @@ impl Addon {
             for (rule_index, rule) in self.config.preset_rules.iter().enumerate() {
                 ui.table_next_column();
                 let mut default_label = "";
-                Self::render_move_buttons(
-                    ui,
-                    &mut ui_actions,
-                    last_rule_index,
-                    rule_index,
-                    &mut default_label,
-                );
+                if last_rule_index == rule_index {
+                    default_label = "[default]";
+                }
+                ui.move_up_button(&mut ui_actions, rule_index);
+                ui.move_down_button(&mut ui_actions, rule_index, last_rule_index);
                 ui.table_next_column();
                 ui.text(&rule.rule_name);
                 ui.table_next_column();
@@ -96,32 +95,10 @@ impl Addon {
                 }
 
                 ui.table_next_column();
-                Self::render_more_options(
-                    &mut ui_actions,
-                    &mut self.context.ui,
-                    rule_index,
-                    ui,
-                );
+                Self::render_more_options(&mut ui_actions, &mut self.context.ui, rule_index, ui);
             }
-            self.post_render_rules_actions(ui_actions);
+            process_ui_actions_for_vec(&mut self.config.preset_rules, ui_actions);
         }
-    }
-
-    fn render_move_buttons(
-        ui: &Ui,
-        ui_actions: &mut Vec<UiAction>,
-        last_rule_index: usize,
-        rule_index: usize,
-        mut default_label: &mut &str,
-    ) {
-        Self::render_move_up_button(ui, ui_actions, rule_index);
-        Self::render_move_down_button(
-            ui,
-            ui_actions,
-            last_rule_index,
-            rule_index,
-            &mut default_label,
-        );
     }
 
     fn render_more_options(
@@ -148,62 +125,6 @@ impl Addon {
             }
         });
         ui.same_line();
-    }
-
-    fn render_move_down_button(
-        ui: &Ui,
-        ui_actions: &mut Vec<UiAction>,
-        last_rule_index: usize,
-        rule_index: usize,
-        default_label: &mut &str,
-    ) {
-        if last_rule_index == rule_index {
-            *default_label = "[default]";
-            let color = ui.style_color(StyleColor::TextDisabled);
-            let style = ui.push_style_color(StyleColor::Text, color);
-            ui.arrow_button("", Direction::Down);
-            style.end();
-        } else if ui.arrow_button(format!("##pr_down{}", rule_index), Direction::Down) {
-            ui_actions.push(UiAction::MoveDown(rule_index));
-        }
-    }
-
-    fn render_move_up_button(ui: &Ui, ui_actions: &mut Vec<UiAction>, rule_index: usize) {
-        if rule_index != 0 {
-            if ui.arrow_button(format!("##pr_up{}", rule_index), Direction::Up) {
-                ui_actions.push(UiAction::MoveUp(rule_index));
-            }
-            ui.same_line();
-        } else {
-            let color = ui.style_color(StyleColor::TextDisabled);
-            let style = ui.push_style_color(StyleColor::Text, color);
-            ui.arrow_button("", Direction::Up);
-            style.end();
-            ui.same_line();
-        }
-    }
-
-    fn post_render_rules_actions(
-        &mut self,
-        ui_actions: Vec<UiAction>,
-    ) {
-        for action in ui_actions {
-            match action {
-                UiAction::MoveDown(i) => self.config.preset_rules.swap(i, i + 1),
-                UiAction::MoveUp(i) => self.config.preset_rules.swap(i, i - 1),
-                UiAction::Delete(i) => {
-                    self.config.preset_rules.remove(i);
-                    ()
-                },
-                UiAction::Clone(i) => {
-                    if let Some(rule) = self.config.preset_rules.get(i) {
-                        let mut new_rule = rule.clone();
-                        new_rule.rule_name = format!("{} (1)", new_rule.rule_name);
-                        self.config.preset_rules.insert(0, new_rule);
-                    }
-                }
-            }
-        }
     }
 
     fn render_how_to_use(&self, ui: &Ui) {
