@@ -117,35 +117,41 @@ impl Addon {
             TreeNodeFlags::SPAN_AVAIL_WIDTH | TreeNodeFlags::DEFAULT_OPEN,
         ) {
             ui.spacing();
+            let mut rendered_conditions: HashSet<mem::Discriminant<ConditionData>> = HashSet::new();
             if rule.conditions.is_empty() {
                 ui.text_disabled("No conditions");
-            }
-            let mut rendered_conditions: HashSet<mem::Discriminant<ConditionData>> = HashSet::new();
-            let mut ui_actions: Vec<UiAction> = vec![];
-            let last_i = rule.conditions.len() - 1;
-            let mut rule_condition_iter = rule.conditions.iter_mut().enumerate().peekable();
-            while let Some((i, rule_condition)) = rule_condition_iter.next() {
-                Self::render_condition_data(context, ui, &mut rendered_conditions, rule_condition);
-                ui.spacing();
-                ui.move_up_button(&mut ui_actions, i);
-                ui.move_down_button(&mut ui_actions, i, last_i);
-                ui.same_line();
-                if ui.button(format!("Delete##rule_condition{}", i)) {
-                    ui_actions.push(UiAction::Delete(i));
-                }
-                if let Some((next_index, next_condition)) = rule_condition_iter.peek_mut() {
-                    ui.new_line();
-                    ui.separator();
-                    if ui.button(format!(
-                        "{}##rule_condition{}",
-                        next_condition.conjunction_type, next_index
-                    )) {
-                        next_condition.conjunction_type.switch();
+            } else {
+                let mut ui_actions: Vec<UiAction> = vec![];
+                let last_i = rule.conditions.len() - 1;
+                let mut rule_condition_iter = rule.conditions.iter_mut().enumerate().peekable();
+                while let Some((i, rule_condition)) = rule_condition_iter.next() {
+                    Self::render_condition_data(
+                        context,
+                        ui,
+                        &mut rendered_conditions,
+                        rule_condition,
+                    );
+                    ui.spacing();
+                    ui.move_up_button(&mut ui_actions, i);
+                    ui.move_down_button(&mut ui_actions, i, last_i);
+                    ui.same_line();
+                    if ui.button(format!("Delete##rule_condition{}", i)) {
+                        ui_actions.push(UiAction::Delete(i));
+                    }
+                    if let Some((next_index, next_condition)) = rule_condition_iter.peek_mut() {
+                        ui.new_line();
+                        ui.separator();
+                        if ui.button(format!(
+                            "{}##rule_condition{}",
+                            next_condition.conjunction_type, next_index
+                        )) {
+                            next_condition.conjunction_type.switch();
+                        }
                     }
                 }
+                process_ui_actions_for_vec(&mut rule.conditions, ui_actions);
             }
 
-            process_ui_actions_for_vec(&mut rule.conditions, ui_actions);
             ui.spacing();
             Self::render_condition_creator(rule, ui, rendered_conditions);
             ui.new_line();
