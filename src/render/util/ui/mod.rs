@@ -7,6 +7,11 @@ pub enum UiAction {
     Clone(usize),
 }
 
+pub enum RenderResult {
+    Terminated,
+    Concluded,
+}
+
 pub trait UiElement {
     fn rename(&mut self, _new_name: String) {}
     fn name(&self) -> &String;

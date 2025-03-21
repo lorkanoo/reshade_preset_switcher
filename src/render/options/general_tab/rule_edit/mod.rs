@@ -9,7 +9,7 @@ use crate::context::reshade_context::ReshadeContext;
 use crate::context::Context;
 use crate::render::options::ERROR_COLOR;
 use crate::render::util::ui::extended::UiExtended;
-use crate::render::util::ui::{process_ui_actions_for_vec, UiAction};
+use crate::render::util::ui::{process_ui_actions_for_vec, RenderResult, UiAction};
 use function_name::named;
 use log::error;
 use nexus::data_link::mumble::MumblePtr;
@@ -21,7 +21,13 @@ use std::path::PathBuf;
 impl Addon {
     pub fn render_rule_edit(&mut self, rule_index: usize, ui: &Ui) {
         if rule_index < self.config.preset_rules.len() {
-            self.render_button_ribbon(rule_index, ui);
+            if matches!(
+                self.render_button_ribbon(rule_index, ui),
+                RenderResult::Terminated
+            ) {
+                return;
+            }
+
             let rule = self.config.preset_rules.get_mut(rule_index).unwrap();
             ui.input_text("Rule name", &mut rule.rule_name).build();
             ui.new_line();
@@ -258,7 +264,7 @@ impl Addon {
         ui.checkbox("Dawn", &mut time_periods.dawn);
     }
 
-    fn render_button_ribbon(&mut self, rule_index: usize, ui: &Ui) {
+    fn render_button_ribbon(&mut self, rule_index: usize, ui: &Ui) -> RenderResult {
         ui.spacing();
         if ui.button("Close") {
             self.context.ui.rule_under_edit_index = None;
@@ -269,8 +275,10 @@ impl Addon {
         if ui.button("Delete rule") {
             self.config.preset_rules.remove(rule_index);
             self.context.ui.rule_under_edit_index = None;
+            return RenderResult::Terminated;
         }
         ui.spacing();
+        RenderResult::Concluded
     }
 
     fn render_maps_condition_data(
