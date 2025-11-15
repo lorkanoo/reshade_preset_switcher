@@ -40,11 +40,11 @@ pub fn process_preset_rules(new_map_id: u32) {
 pub fn activate_preset_rule(mut addon: MutexGuard<Addon>, rule_index_to_activate: Option<usize>) {
     debug!("[{}] Activating preset rule with index {:?}", function_name!(), rule_index_to_activate);
     let rule_to_activate;
-    if rule_index_to_activate.is_some() {
+    if let Some(rule_index) = rule_index_to_activate {
         rule_to_activate = addon
             .config
             .preset_rules
-            .get_mut(rule_index_to_activate.unwrap());
+            .get_mut(rule_index);
     } else {
         rule_to_activate = addon.config.preset_rules.last_mut();
         info!("[{}] Activating default preset", function_name!());

@@ -388,7 +388,7 @@ impl Addon {
             if let Ok(map_id) = search_term.parse::<u32>() {
                 parsed_map_id = map_id.to_string();
                 parsed_label = "Add unknown map id".to_string();
-                if !maps.iter().any(|id| *id == map_id) {
+                if !maps.contains(&map_id) {
                     search_results.push((&parsed_map_id, &parsed_label));
                 }
             }
