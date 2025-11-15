@@ -1,6 +1,6 @@
 use nexus::data_link::mumble::MumblePtr;
-use nexus::data_link::{get_mumble_link, get_nexus_link, NexusLink};
 use nexus::data_link::rtapi::read_rtapi;
+use nexus::data_link::{get_mumble_link, get_nexus_link, NexusLink};
 use nexus::rtapi::data::RealTimeData;
 
 #[derive(Debug, Clone)]

@@ -64,7 +64,9 @@ fn last_even_hour(now: DateTime<Utc>) -> u32 {
     }
 }
 
-pub fn current_time_period_with_default_detection(thresholds: (i64, i64, i64, i64)) -> CurrentTimePeriod {
+pub fn current_time_period_with_default_detection(
+    thresholds: (i64, i64, i64, i64),
+) -> CurrentTimePeriod {
     let current_time = Utc::now() + Duration::hours(1);
     let hour = last_even_hour(current_time);
     let day_start_time = current_time

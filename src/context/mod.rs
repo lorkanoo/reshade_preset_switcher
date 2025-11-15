@@ -7,13 +7,14 @@ use crate::addon::Addon;
 use crate::context::links::Links;
 use crate::context::reshade_context::ReshadeContext;
 use crate::context::time_period::{
-    canthan_time_thresholds, current_time_period_with_default_detection, tyrian_time_thresholds, CurrentTimePeriod,
+    canthan_time_thresholds, current_time_period_with_default_detection, tyrian_time_thresholds,
+    CurrentTimePeriod,
 };
 use crate::context::ui::UiContext;
 use crate::util::reshade::load_reshade_context;
 use function_name::named;
-use log::info;
 use log::error;
+use log::info;
 use nexus::rtapi::WorldData;
 
 #[derive(Debug, Clone)]
@@ -35,7 +36,9 @@ impl Default for Context {
             previous_map_id: None,
             ui: UiContext::default(),
             reshade: ReshadeContext::default(),
-            current_time_period: current_time_period_with_default_detection(tyrian_time_thresholds()),
+            current_time_period: current_time_period_with_default_detection(
+                tyrian_time_thresholds(),
+            ),
             process_manually: false,
         }
     }
@@ -66,7 +69,8 @@ impl Context {
                         }
                     };
                 } else {
-                    self.current_time_period = self.detect_time_period_with_default_detection(new_map_id);
+                    self.current_time_period =
+                        self.detect_time_period_with_default_detection(new_map_id);
                 };
 
                 info!(
@@ -80,7 +84,10 @@ impl Context {
         false
     }
 
-    fn detect_time_period_with_default_detection(&mut self, new_map_id: &mut u32) -> CurrentTimePeriod {
+    fn detect_time_period_with_default_detection(
+        &mut self,
+        new_map_id: &mut u32,
+    ) -> CurrentTimePeriod {
         if canthan_time_maps().contains(new_map_id) {
             current_time_period_with_default_detection(canthan_time_thresholds())
         } else {
