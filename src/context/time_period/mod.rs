@@ -1,7 +1,8 @@
-use crate::context::{canthan_maps, Context};
+use crate::context::{canthan_time_maps, Context};
 use chrono::{DateTime, Duration, Timelike, Utc};
 use function_name::named;
-use log::info;
+use log::{error, info};
+use nexus::rtapi::{TimeOfDay, WorldData};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CurrentTimePeriod {
@@ -11,14 +12,37 @@ pub enum CurrentTimePeriod {
     Dawn,
 }
 
+impl From<TimeOfDay> for CurrentTimePeriod {
+    fn from(time_of_day: TimeOfDay) -> Self {
+        match time_of_day {
+            TimeOfDay::Dawn => CurrentTimePeriod::Dawn,
+            TimeOfDay::Day => CurrentTimePeriod::Day,
+            TimeOfDay::Dusk => CurrentTimePeriod::Dusk,
+            TimeOfDay::Night => CurrentTimePeriod::Night,
+        }
+    }
+}
+
 impl Context {
     #[named]
     pub fn time_period_changed(&mut self, current_map_id: &mut u32) -> bool {
         let mut time_thresholds = tyrian_time_thresholds();
-        if canthan_maps().contains(current_map_id) {
+        if canthan_time_maps().contains(current_map_id) {
             time_thresholds = canthan_time_thresholds();
         }
-        let new_period = current_time_period(time_thresholds);
+        let new_period = if let Some(rtapi) = &self.links.rtapi {
+            let world_data = unsafe { WorldData::read(rtapi) };
+            match world_data.time_of_day {
+                Ok(time_of_day) => CurrentTimePeriod::from(time_of_day),
+                Err(e) => {
+                    error!("Error reading rtapi time of day: {}", e);
+                    current_time_period_with_default_detection(time_thresholds)
+                }
+            }
+        } else {
+            current_time_period_with_default_detection(time_thresholds)
+        };
+
         if new_period != self.current_time_period {
             self.current_time_period = new_period;
             info!(
@@ -40,7 +64,7 @@ fn last_even_hour(now: DateTime<Utc>) -> u32 {
     }
 }
 
-pub fn current_time_period(thresholds: (i64, i64, i64, i64)) -> CurrentTimePeriod {
+pub fn current_time_period_with_default_detection(thresholds: (i64, i64, i64, i64)) -> CurrentTimePeriod {
     let current_time = Utc::now() + Duration::hours(1);
     let hour = last_even_hour(current_time);
     let day_start_time = current_time

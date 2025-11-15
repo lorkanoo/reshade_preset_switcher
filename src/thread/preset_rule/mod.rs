@@ -4,14 +4,16 @@ use function_name::named;
 use log::{debug, info};
 use std::sync::MutexGuard;
 
-const RETRY_COUNT: usize = 3;
+const RETRY_COUNT: usize = 10;
 
 #[named]
 pub fn process_preset_rules(new_map_id: u32) {
     let mut rule_index_to_activate = None;
     Addon::lock().context.process_manually = false;
     if !is_on_character_select() {
+        debug!("[{}] Not on character select, processing rules", function_name!());
         let addon = Addon::lock();
+        debug!("[{}] List of rules: {:?}", function_name!(), addon.config.preset_rules);
         for (rule_index, preset_rule) in addon.config.preset_rules.iter().enumerate() {
             debug!("[{}] processing rule {:?}", function_name!(), preset_rule);
             let result = preset_rule.evaluate(&addon.context, &new_map_id);
@@ -28,12 +30,15 @@ pub fn process_preset_rules(new_map_id: u32) {
                 }
             }
         }
+    } else {
+        debug!("[{}] On character select, not processing rules", function_name!());
     }
     activate_preset_rule(Addon::lock(), rule_index_to_activate);
 }
 
 #[named]
 pub fn activate_preset_rule(mut addon: MutexGuard<Addon>, rule_index_to_activate: Option<usize>) {
+    debug!("[{}] Activating preset rule with index {:?}", function_name!(), rule_index_to_activate);
     let rule_to_activate;
     if rule_index_to_activate.is_some() {
         rule_to_activate = addon

@@ -17,6 +17,7 @@ pub fn background_thread() {
             break;
         }
         clean_finished_threads();
+        unsafe { Addon::lock().context.links.update_rtapi() } ;
         if Addon::lock().config.valid() {
             let reshade_ini_path = Addon::lock().config.reshade.ini_path.clone();
             load_reshade_context(&reshade_ini_path);

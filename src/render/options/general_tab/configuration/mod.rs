@@ -1,5 +1,5 @@
 use crate::addon::Addon;
-use crate::render::options::ERROR_COLOR;
+use crate::render::options::{ERROR_COLOR, SUCCESS_COLOR};
 use crate::render::util::shorten_path;
 use crate::render::util::ui::extended::UiExtended;
 use crate::thread::select_reshade_ini_file_thread;
@@ -50,6 +50,13 @@ impl Addon {
             ui.selected_file("ReShade.ini location", "##reshade_ini", &mut path, || {
                 select_reshade_ini_file_thread()
             });
+            ui.new_line();
+            if self.context.links.rtapi.is_some() {
+                ui.text_colored(SUCCESS_COLOR, "RealTime API enabled.");
+            } else {
+                ui.text("RealTime API disabled.");
+                ui.text_disabled("Install RealTime API for better map time detection in homestead and some map instances.");
+            }
             ui.new_line();
         }
     }

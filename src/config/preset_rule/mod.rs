@@ -69,7 +69,7 @@ impl PresetRule {
             let mut inside_failed_and_chain = false;
             let rule_condition_iter = &mut self.conditions.iter().peekable();
             while let Some(rule_condition) = rule_condition_iter.next() {
-                let current_condition_fullfiled = {
+                let current_condition_fulfilled = {
                     if inside_failed_and_chain {
                         false
                     } else {
@@ -96,14 +96,14 @@ impl PresetRule {
                 match rule_condition_iter.peek() {
                     None => {
                         //never true if inside_failed_and_chain
-                        rule_fulfilled = current_condition_fullfiled;
+                        rule_fulfilled = current_condition_fulfilled;
                         break;
                     }
                     Some(next) => match next.conjunction_type {
                         ConjunctionType::Or => {
                             //fresh card - ignore all previous failures
                             inside_failed_and_chain = false;
-                            if current_condition_fullfiled {
+                            if current_condition_fulfilled {
                                 rule_fulfilled = true;
                                 debug!("[{}] Success because of 'or' part", function_name!());
                                 break;
@@ -111,7 +111,7 @@ impl PresetRule {
                         }
                         ConjunctionType::And => {
                             //unfulfilled 'and' starts failed_and_chain until 'or' is encountered
-                            if !current_condition_fullfiled || inside_failed_and_chain {
+                            if !current_condition_fulfilled || inside_failed_and_chain {
                                 rule_fulfilled = false;
                                 inside_failed_and_chain = true;
                                 debug!("[{}] Failure due to 'and' part", function_name!());
